@@ -3,8 +3,8 @@ import SwiftUI
 struct TimelineScreen: View {
     @EnvironmentObject var store: Store
     @State private var vertical = !ProcessInfo.processInfo.arguments.contains("--horizontal")
-    @State private var zoom: CGFloat = 1
-    @State private var pinchBase: CGFloat = 1
+    @State private var zoom: CGFloat = ProcessInfo.processInfo.arguments.contains("--horizontal") ? 4 : 1
+    @State private var pinchBase: CGFloat = ProcessInfo.processInfo.arguments.contains("--horizontal") ? 4 : 1
     @State private var selection: UUID?
     @State private var drag: (id: UUID, minutes: Int)?
     @State private var conflict: (moved: ActiveTask, other: ActiveTask)?
@@ -24,12 +24,20 @@ struct TimelineScreen: View {
                 let flask = makeFlask(in: geo.size)
                 ZStack {
                     Theme.background.ignoresSafeArea()
-                    ScrollView(vertical ? .vertical : .horizontal, showsIndicators: false) {
+                    ScrollViewReader { proxy in
+                      ScrollView(vertical ? .vertical : .horizontal, showsIndicators: false) {
                         canvas(flask)
                             .padding(.top, vertical ? 10 : 34)
                             .padding(.bottom, vertical ? 16 : 26)
                             .padding(.leading, vertical ? 62 : 30)
                             .padding(.trailing, vertical ? 16 : 30)
+                      }
+                      .onAppear { proxy.scrollTo("now", anchor: .center) }
+                      .onChange(of: vertical) { _, isVertical in
+                          zoom = isVertical ? 1 : 4
+                          pinchBase = zoom
+                          proxy.scrollTo("now", anchor: .center)
+                      }
                     }
                     .simultaneousGesture(
                         MagnifyGesture()
@@ -130,8 +138,12 @@ struct TimelineScreen: View {
                           delete: { store.remove(task) })
             }
             NowRule(flask: flask, minute: now)
+            Color.clear
+                .frame(width: 1, height: 1)
+                .offset(x: flask.vertical ? 0 : flask.offset(now), y: flask.vertical ? flask.offset(now) : 0)
+                .id("now")
         }
-        .overlay { TimeScale(flask: flask) }
+        .overlay(alignment: .topLeading) { TimeScale(flask: flask) }
         .contentShape(Rectangle())
         .onTapGesture { withAnimation(.snappy) { selection = nil } }
     }
