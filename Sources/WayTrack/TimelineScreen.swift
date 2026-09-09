@@ -24,27 +24,20 @@ struct TimelineScreen: View {
                 let flask = makeFlask(in: geo.size)
                 ZStack {
                     Theme.background.ignoresSafeArea()
-                    ScrollViewReader { proxy in
-                      ScrollView(vertical ? .vertical : .horizontal, showsIndicators: false) {
+                    ScrollView(vertical ? .vertical : .horizontal, showsIndicators: false) {
                         canvas(flask)
                             .padding(.top, vertical ? 10 : 34)
                             .padding(.bottom, vertical ? 16 : 26)
                             .padding(.leading, vertical ? 62 : 30)
                             .padding(.trailing, vertical ? 16 : 30)
-                      }
-                      .task {
-                          // ponytail: scrollTo в onAppear уходит в пустоту — контент ещё не разложен.
-                          try? await Task.sleep(for: .milliseconds(120))
-                          proxy.scrollTo("now", anchor: .center)
-                      }
-                      .onChange(of: vertical) { _, isVertical in
-                          zoom = isVertical ? 1 : 4
-                          pinchBase = zoom
-                          Task {
-                              try? await Task.sleep(for: .milliseconds(120))
-                              proxy.scrollTo("now", anchor: .center)
-                          }
-                      }
+                    }
+                    // Начальная прокрутка к «сейчас»: якорь через scrollTo не работает —
+                    // .offset не участвует в раскладке, поэтому цель всегда в начале ленты.
+                    .defaultScrollAnchor(vertical ? UnitPoint(x: 0.5, y: nowFraction)
+                                                  : UnitPoint(x: nowFraction, y: 0.5))
+                    .onChange(of: vertical) { _, isVertical in
+                        zoom = isVertical ? 1 : 4
+                        pinchBase = zoom
                     }
                     .simultaneousGesture(
                         MagnifyGesture()
@@ -107,6 +100,11 @@ struct TimelineScreen: View {
 
     private var selectedTask: ActiveTask? { store.day.active.first { $0.id == selection } }
 
+    private var nowFraction: CGFloat {
+        let span = max(1, store.dayEnd - store.dayStart)
+        return min(1, max(0, CGFloat(now - store.dayStart) / CGFloat(span)))
+    }
+
     private func makeFlask(in size: CGSize) -> Flask {
         let box = vertical
             ? CGSize(width: min(150, size.width - 110), height: (size.height - 30) * zoom)
@@ -145,10 +143,6 @@ struct TimelineScreen: View {
                           delete: { store.remove(task) })
             }
             NowRule(flask: flask, minute: now)
-            Color.clear
-                .frame(width: 1, height: 1)
-                .offset(x: flask.vertical ? 0 : flask.offset(now), y: flask.vertical ? flask.offset(now) : 0)
-                .id("now")
         }
         .overlay(alignment: .topLeading) { TimeScale(flask: flask) }
         .contentShape(Rectangle())
