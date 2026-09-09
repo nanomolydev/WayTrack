@@ -97,6 +97,26 @@ jobs:
           SIZE: ${{ steps.package.outputs.size }}
         run: python3 scripts/make_repo_json.py
 
+      # Смоук: приложение реально стартует в симуляторе, скриншот кладём в артефакты.
+      - name: Smoke run in simulator
+        run: |
+          xcodebuild build \
+            -project WayTrack.xcodeproj -scheme WayTrack -configuration Debug \
+            -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 16' \
+            -derivedDataPath DerivedDataSim CODE_SIGNING_ALLOWED=NO -quiet
+          xcrun simctl boot "iPhone 16" || true
+          xcrun simctl bootstatus "iPhone 16" -b || true
+          xcrun simctl install booted DerivedDataSim/Build/Products/Debug-iphonesimulator/WayTrack.app
+          xcrun simctl launch booted com.waytrack.app
+          sleep 8
+          xcrun simctl io booted screenshot vertical.png
+          xcrun simctl io booted screenshot check.png
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: "*.png"
+
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}

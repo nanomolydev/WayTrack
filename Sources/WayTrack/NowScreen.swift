@@ -3,6 +3,7 @@ import SwiftUI
 struct NowScreen: View {
     @EnvironmentObject var store: Store
     @State private var now = currentMinute()
+    @State private var beat = Date()
     @State private var askingUnpredictable = false
     @State private var unpredictableTitle = ""
 
@@ -27,6 +28,23 @@ struct NowScreen: View {
                                 .foregroundStyle(Theme.faint)
                         }
                     }
+                    HStack(spacing: 12) {
+                        Button {
+                            if store.runningSince == nil { store.startTimer() } else { store.runningSince = nil }
+                        } label: {
+                            Label(store.runningSince == nil ? "Запустить" : "Остановить",
+                                  systemImage: store.runningSince == nil ? "play.fill" : "pause.fill")
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .padding(.horizontal, 18).padding(.vertical, 12)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        if let since = store.runningSince {
+                            Text(elapsed(since)).id(beat)
+                                .font(.system(size: 15, weight: .medium, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(Theme.faint)
+                        }
+                    }
                     Button {
                         askingUnpredictable = true
                     } label: {
@@ -42,8 +60,8 @@ struct NowScreen: View {
             }
             .navigationTitle("Сейчас")
             .navigationBarTitleDisplayMode(.inline)
-            .onReceive(tick) { _ in now = currentMinute() }
-            .onAppear { if store.runningSince == nil { store.startTimer() } }
+            .onReceive(tick) { _ in now = currentMinute(); beat = Date() }
+
             .alert("Что это было?", isPresented: $askingUnpredictable) {
                 TextField("Описание", text: $unpredictableTitle)
                 Button("Сохранить") {
@@ -60,6 +78,12 @@ struct NowScreen: View {
     }
 
     private var current: Engine.Slot? { Engine.slot(at: now, in: store.day) }
+
+    /// Прошедшее время текущего прогона — вторая половина п.22 к оставшемуся в кольце.
+    private func elapsed(_ since: Date) -> String {
+        let seconds = max(0, Int(Date().timeIntervalSince(since)))
+        return String(format: "%d:%02d прошло", seconds / 60, seconds % 60)
+    }
 }
 
 /// Круговой прогресс текущего отрезка: кольцо убывает, в центре — остаток.

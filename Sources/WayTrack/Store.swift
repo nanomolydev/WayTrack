@@ -17,7 +17,25 @@ final class Store: ObservableObject {
         if let data = try? Data(contentsOf: url),
            let saved = try? JSONDecoder().decode(DaySchedule.self, from: data) {
             day = saved
+        } else {
+            day = Store.demoDay()
         }
+    }
+
+    /// Первый запуск: пустой день ничего не объясняет, поэтому показываем пример.
+    static func demoDay() -> DaySchedule {
+        var day = DaySchedule()
+        day.fixed = [
+            FixedTask(name: "Завтрак", start: 8 * 60, duration: 30, colorHex: "8E8E93"),
+            FixedTask(name: "Прогулка", start: 13 * 60, duration: 45, colorHex: "64D2FF"),
+        ]
+        day.active = [
+            ActiveTask(name: "Программирование", colorHex: "0A84FF", start: 9 * 60,
+                       config: CycleConfig(cycle: 50, rest: 10, cyclesPerPause: 3, pause: 30, total: 200)),
+            ActiveTask(name: "Спорт", colorHex: "FF9F0A", start: 18 * 60,
+                       config: CycleConfig(cycle: 20, rest: 5, cyclesPerPause: 0, pause: 0, total: 60)),
+        ].map { Engine.materialize($0, fixed: day.fixed) }
+        return day
     }
 
     private func persist() {
