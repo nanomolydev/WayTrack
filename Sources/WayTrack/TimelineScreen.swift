@@ -32,11 +32,18 @@ struct TimelineScreen: View {
                             .padding(.leading, vertical ? 62 : 30)
                             .padding(.trailing, vertical ? 16 : 30)
                       }
-                      .onAppear { proxy.scrollTo("now", anchor: .center) }
+                      .task {
+                          // ponytail: scrollTo в onAppear уходит в пустоту — контент ещё не разложен.
+                          try? await Task.sleep(for: .milliseconds(120))
+                          proxy.scrollTo("now", anchor: .center)
+                      }
                       .onChange(of: vertical) { _, isVertical in
                           zoom = isVertical ? 1 : 4
                           pinchBase = zoom
-                          proxy.scrollTo("now", anchor: .center)
+                          Task {
+                              try? await Task.sleep(for: .milliseconds(120))
+                              proxy.scrollTo("now", anchor: .center)
+                          }
                       }
                     }
                     .simultaneousGesture(

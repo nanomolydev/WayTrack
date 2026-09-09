@@ -17,12 +17,12 @@ struct NowScreen: View {
                     ForEach(Engine.suggestions(from: store.day)) { suggestion in
                         SuggestionRow(title: suggestion.title, count: suggestion.count)
                     }
-                    ProgressRing(slot: current, now: now)
+                    ProgressRing(slot: current, next: next, now: now)
                         .frame(width: 240, height: 240)
                     VStack(spacing: 6) {
                         Text(current?.title ?? "Свободно")
                             .font(.system(size: 22, weight: .semibold, design: .rounded))
-                        if let next = Engine.nextSlot(after: now, in: store.day) {
+                        if let next {
                             Text("далее: \(next.title) · \(clockString(next.start))")
                                 .font(.system(size: 14, design: .rounded))
                                 .foregroundStyle(Theme.faint)
@@ -78,6 +78,7 @@ struct NowScreen: View {
     }
 
     private var current: Engine.Slot? { Engine.slot(at: now, in: store.day) }
+    private var next: Engine.Slot? { Engine.nextSlot(after: now, in: store.day) }
 
     /// Прошедшее время текущего прогона — вторая половина п.22 к оставшемуся в кольце.
     private func elapsed(_ since: Date) -> String {
@@ -89,21 +90,30 @@ struct NowScreen: View {
 /// Круговой прогресс текущего отрезка: кольцо убывает, в центре — остаток.
 private struct ProgressRing: View {
     var slot: Engine.Slot?
+    var next: Engine.Slot?
     var now: Int
 
-    private var fraction: Double {
-        guard let slot, slot.end > slot.start else { return 0 }
-        return 1 - Double(now - slot.start) / Double(slot.end - slot.start)
+    /// В паузе между задачами кольцо отсчитывает время до следующей,
+    /// иначе пустой день выглядит сломанным.
+    private var window: (start: Int, end: Int, color: String)? {
+        if let slot { return (slot.start, slot.end, slot.colorHex) }
+        if let next { return (now, next.start, next.colorHex) }
+        return nil
     }
 
-    private var remaining: Int { max(0, (slot?.end ?? now) - now) }
+    private var fraction: Double {
+        guard let window, window.end > window.start else { return 0 }
+        return 1 - Double(now - window.start) / Double(window.end - window.start)
+    }
+
+    private var remaining: Int { max(0, (window?.end ?? now) - now) }
 
     var body: some View {
         ZStack {
             Circle().stroke(Theme.flask, lineWidth: 16)
             Circle()
                 .trim(from: 0, to: max(0, min(1, fraction)))
-                .stroke(Color(hex: slot?.colorHex ?? "8E8E93"),
+                .stroke(Color(hex: window?.color ?? "8E8E93").opacity(slot == nil ? 0.4 : 1),
                         style: StrokeStyle(lineWidth: 16, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.4), value: fraction)
@@ -111,7 +121,7 @@ private struct ProgressRing: View {
                 Text("\(remaining)")
                     .font(.system(size: 52, weight: .semibold, design: .rounded))
                     .monospacedDigit()
-                Text("мин осталось")
+                Text(slot == nil ? "мин до следующей" : "мин осталось")
                     .font(.system(size: 12, design: .rounded))
                     .foregroundStyle(Theme.faint)
             }
