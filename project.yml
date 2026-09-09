@@ -17,16 +17,24 @@ targets:
       - Sources/WayTrack
       - Sources/WayTrackCore
       - Resources
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: WayTrack
+        UILaunchScreen: {}
+        UIUserInterfaceStyle: Dark
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        # Мост claude-vpn живёт на сервере по http — без этого ATS его заблокирует.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.waytrack.app
         PRODUCT_NAME: WayTrack
-        GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_CFBundleDisplayName: WayTrack
-        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         TARGETED_DEVICE_FAMILY: "1,2"
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: NO

@@ -91,3 +91,62 @@ final class EngineTests: XCTestCase {
         XCTAssertEqual(Engine.nextSlot(after: 490, in: day)?.title, "Цикл 1")
     }
 }
+
+final class AIOpsTests: XCTestCase {
+
+    func testParseTime() {
+        XCTAssertEqual(Engine.parseTime("9:30"), 570)
+        XCTAssertEqual(Engine.parseTime("09:05"), 545)
+        XCTAssertEqual(Engine.parseTime("600"), 600)
+        XCTAssertNil(Engine.parseTime("завтра"))
+    }
+
+    func testApplyAddsAndMoves() {
+        var day = DaySchedule()
+        let ops = [
+            TaskOp(op: "add_fixed", name: "Завтрак", start: "8:00", duration: 30),
+            TaskOp(op: "add_active", name: "Спорт", start: "18:00", cycle: 20, rest: 5,
+                   cyclesPerPause: 0, pause: 0, total: 40),
+            TaskOp(op: "move", name: "Спорт", start: "19:00"),
+        ]
+        let (result, log) = Engine.apply(ops, to: day, allowDelete: false, palette: ["FF9F0A"])
+        day = result
+        XCTAssertEqual(day.fixed.first?.start, 480)
+        XCTAssertEqual(day.active.first?.start, 1140)
+        XCTAssertFalse(day.active.first!.segments.isEmpty)
+        XCTAssertEqual(log.count, 3)
+    }
+
+    func testDeleteBlockedUnlessAllowed() {
+        var day = DaySchedule()
+        day.fixed = [FixedTask(name: "Завтрак", start: 480, duration: 30)]
+        let ops = [TaskOp(op: "delete", name: "Завтрак")]
+
+        let (kept, blockedLog) = Engine.apply(ops, to: day, allowDelete: false, palette: [])
+        XCTAssertEqual(kept.fixed.count, 1)
+        XCTAssertTrue(blockedLog.first?.contains("запрещено") == true)
+
+        let (removed, _) = Engine.apply(ops, to: day, allowDelete: true, palette: [])
+        XCTAssertTrue(removed.fixed.isEmpty)
+    }
+
+    func testAddActiveWrapsAroundExistingFixedTask() {
+        var day = DaySchedule()
+        day.fixed = [FixedTask(name: "Обед", start: 730, duration: 30)]
+        let (result, _) = Engine.apply(
+            [TaskOp(op: "add_active", name: "Работа", start: "12:00", cycle: 60, rest: 0,
+                    cyclesPerPause: 0, pause: 0, total: 60)],
+            to: day, allowDelete: false, palette: ["0A84FF"])
+        day = result
+        XCTAssertEqual(day.active.first?.segments.map { [$0.start, $0.duration] }, [[720, 10], [760, 50]])
+    }
+
+    func testDescribeMentionsBothKinds() {
+        var day = DaySchedule()
+        day.fixed = [FixedTask(name: "Завтрак", start: 480, duration: 30)]
+        day.active = [Engine.materialize(ActiveTask(name: "Спорт", colorHex: "FF9F0A", start: 1080), fixed: [])]
+        let text = Engine.describe(day)
+        XCTAssertTrue(text.contains("постоянная «Завтрак» 8:00–8:30"))
+        XCTAssertTrue(text.contains("активная «Спорт»"))
+    }
+}

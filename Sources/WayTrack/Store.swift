@@ -8,6 +8,8 @@ final class Store: ObservableObject {
     @Published var dayEnd = minutesInDay
     /// Запущенный таймер: момент старта прогона (для «непредсказуемой задачи»).
     @Published var runningSince: Date?
+    /// Идентификатор сессии на мосту claude-vpn; nil — следующий запрос её разбудит.
+    @Published var aiSession: String?
 
     private let url = URL.documentsDirectory.appending(path: "waytrack.json")
 
@@ -101,6 +103,15 @@ final class Store: ObservableObject {
         addFixed(FixedTask(name: title, start: currentMinute(), duration: duration,
                            colorHex: Theme.palette.randomElement() ?? "8E8E93"))
         dismissSuggestion(title)
+    }
+
+    /// Применяет операции, присланные моделью. Возвращает отчёт для чата.
+    func applyAI(_ ops: [TaskOp]) -> [String] {
+        let (updated, log) = Engine.apply(ops, to: day,
+                                          allowDelete: AISettings.allowDelete,
+                                          palette: Theme.palette)
+        day = updated
+        return log
     }
 
     func dismissSuggestion(_ title: String) {

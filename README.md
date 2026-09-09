@@ -50,3 +50,25 @@ https://github.com/<OWNER>/<REPO>/releases/latest/download/repo.json
 ```
 
 Добавьте её в LiveContainer → Sources, и новые сборки будут прилетать обновлением.
+
+## ИИ-планировщик
+
+В приложении есть кнопка ✨ — чат с Claude, который умеет создавать, двигать и менять
+задачи. Удаление разрешено только тумблером в настройках.
+
+Запрос идёт не напрямую в Anthropic, а на мост `bridge/waytrack_bridge.py`,
+который поднят на сервере рядом с `claude-vpn` (подписка + kzVPN-прокси):
+
+```
+POST /chat  Authorization: Bearer <токен>
+{"prompt": "...", "model": "claude-sonnet-5", "session": "<id|null>"}
+→ {"reply": "...", "session": "...", "sleeps_in": 900}
+GET /health → {"awake": true, "quiet_for": 42}
+```
+
+Первый запрос будит сессию Claude Code, следующие продолжают её через `--resume`.
+Если запросов не было `WAYTRACK_IDLE` секунд (по умолчанию 900), сессия засыпает и
+следующее обращение начинает разговор заново — так контекст не тухнет неделями.
+
+Сервис: `systemctl status waytrack-bridge`, токен и настройки — в `/root/.waytrack-bridge.env`.
+Адрес моста, токен и модель задаются в приложении: ⚙️ Настройки.
