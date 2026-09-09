@@ -13,9 +13,12 @@ enum AISettings {
         "claude-haiku-4-5-20251001",
     ]
 
+    /// Мост живёт за nginx на личном домене — порт наружу закрыт, ходим по HTTPS.
+    static let defaultEndpoint = "https://outmarin.com/waytrack"
+
     static var client: AIClient {
         let defaults = UserDefaults.standard
-        return AIClient(endpoint: defaults.string(forKey: endpointKey) ?? "",
+        return AIClient(endpoint: defaults.string(forKey: endpointKey) ?? defaultEndpoint,
                         token: defaults.string(forKey: tokenKey) ?? "",
                         model: defaults.string(forKey: modelKey) ?? models[1])
     }
@@ -26,7 +29,7 @@ enum AISettings {
 struct SettingsScreen: View {
     @EnvironmentObject var store: Store
     @Environment(\.dismiss) private var dismiss
-    @AppStorage(AISettings.endpointKey) private var endpoint = ""
+    @AppStorage(AISettings.endpointKey) private var endpoint = AISettings.defaultEndpoint
     @AppStorage(AISettings.tokenKey) private var token = ""
     @AppStorage(AISettings.modelKey) private var model = AISettings.models[1]
     @AppStorage(AISettings.allowDeleteKey) private var allowDelete = false
@@ -35,7 +38,7 @@ struct SettingsScreen: View {
         NavigationStack {
             Form {
                 Section("Мост claude-vpn") {
-                    TextField("http://адрес:8765", text: $endpoint)
+                    TextField("https://домен/waytrack", text: $endpoint)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     SecureField("Токен", text: $token)
