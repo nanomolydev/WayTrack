@@ -16,7 +16,7 @@ struct TimelineScreen: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geo in
-                let flask = flask(in: geo.size)
+                let flask = makeFlask(in: geo.size)
                 ZStack {
                     Theme.background.ignoresSafeArea()
                     board(flask)
@@ -65,7 +65,7 @@ struct TimelineScreen: View {
 
     private var selectedTask: ActiveTask? { store.day.active.first { $0.id == selection } }
 
-    private func flask(in size: CGSize) -> Flask {
+    private func makeFlask(in size: CGSize) -> Flask {
         let padding: CGFloat = vertical ? 56 : 24
         let box = vertical
             ? CGSize(width: min(150, size.width - padding * 2), height: size.height - 120)

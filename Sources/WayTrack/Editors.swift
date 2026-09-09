@@ -25,7 +25,9 @@ struct FixedEditor: View {
                                 .foregroundStyle(Theme.faint).monospacedDigit()
                         }
                     }
-                    .onDelete { $0.map { store.day.fixed[$0] }.forEach(store.removeFixed) }
+                    .onDelete { indexes in
+                        for task in indexes.map({ store.day.fixed[$0] }) { store.removeFixed(task) }
+                    }
                 }
             }
             .navigationTitle("Постоянная задача")

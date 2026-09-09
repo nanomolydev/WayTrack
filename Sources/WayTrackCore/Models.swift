@@ -74,7 +74,6 @@ public struct ActiveTask: Identifiable, Codable, Hashable, Sendable {
     }
 
     public var end: Int { segments.last?.end ?? start }
-    public var span: Range<Int> { start..<max(end, start + 1) }
     public func segment(at minute: Int) -> Segment? { segments.first { $0.contains(minute) } }
 }
 
