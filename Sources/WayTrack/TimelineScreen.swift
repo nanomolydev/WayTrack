@@ -2,7 +2,7 @@ import SwiftUI
 
 struct TimelineScreen: View {
     @EnvironmentObject var store: Store
-    @State private var vertical = true
+    @State private var vertical = !ProcessInfo.processInfo.arguments.contains("--horizontal")
     @State private var zoom: CGFloat = 1
     @State private var pinchBase: CGFloat = 1
     @State private var selection: UUID?
@@ -26,10 +26,10 @@ struct TimelineScreen: View {
                     Theme.background.ignoresSafeArea()
                     ScrollView(vertical ? .vertical : .horizontal, showsIndicators: false) {
                         canvas(flask)
-                            .padding(.top, vertical ? 16 : 34)
-                            .padding(.bottom, vertical ? 40 : 26)
-                            .padding(.leading, vertical ? 52 : 24)
-                            .padding(.trailing, 24)
+                            .padding(.top, vertical ? 10 : 34)
+                            .padding(.bottom, vertical ? 16 : 26)
+                            .padding(.leading, vertical ? 62 : 30)
+                            .padding(.trailing, vertical ? 16 : 30)
                     }
                     .simultaneousGesture(
                         MagnifyGesture()
@@ -94,8 +94,8 @@ struct TimelineScreen: View {
 
     private func makeFlask(in size: CGSize) -> Flask {
         let box = vertical
-            ? CGSize(width: min(150, size.width - 100), height: (size.height - 90) * zoom)
-            : CGSize(width: (size.width - 60) * zoom, height: min(160, size.height - 190))
+            ? CGSize(width: min(150, size.width - 110), height: (size.height - 30) * zoom)
+            : CGSize(width: (size.width - 64) * zoom, height: min(160, size.height - 190))
         return Flask(vertical: vertical, size: box, range: store.dayStart..<store.dayEnd)
     }
 

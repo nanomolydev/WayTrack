@@ -107,10 +107,17 @@ jobs:
           xcrun simctl boot "iPhone 16" || true
           xcrun simctl bootstatus "iPhone 16" -b || true
           xcrun simctl install booted DerivedDataSim/Build/Products/Debug-iphonesimulator/WayTrack.app
-          xcrun simctl launch booted com.waytrack.app
-          sleep 8
+          shot() {
+            name=$1; shift
+            xcrun simctl terminate booted com.waytrack.app || true
+            xcrun simctl launch booted com.waytrack.app "$@"
+            sleep 6
+            xcrun simctl io booted screenshot "$name.png"
+          }
+          xcrun simctl launch booted com.waytrack.app; sleep 6
           xcrun simctl io booted screenshot vertical.png
-          xcrun simctl io booted screenshot check.png
+          shot horizontal --horizontal
+          shot now --now
 
       - uses: actions/upload-artifact@v4
         with:

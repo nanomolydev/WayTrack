@@ -48,6 +48,9 @@ struct SettingsScreen: View {
                 } footer: {
                     Text("Создавать и менять задачи ИИ может всегда, удалять — только с этим разрешением.")
                 }
+                Section("Уведомления") {
+                    Button("Разрешить уведомления") { Notifications.requestAccess() }
+                }
                 Section("Границы дня") {
                     Stepper("Начало · \(clockString(store.dayStart))", value: $store.dayStart,
                             in: 0...(store.dayEnd - 60), step: 30)

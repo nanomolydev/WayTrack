@@ -40,6 +40,7 @@ struct Flask {
         if perHour > 260 { return 15 }
         if perHour > 120 { return 30 }
         if perHour > 45 { return 60 }
+        if perHour > 22 { return 120 }
         return 180
     }
 }
@@ -82,13 +83,14 @@ struct TimeScale: View {
                         Text(clockString(minute))
                             .font(.system(size: 10, design: .rounded))
                             .foregroundStyle(Theme.faint)
-                            .frame(width: 36, alignment: .trailing)
+                            .frame(width: 40, alignment: .trailing)
+                            .fixedSize()
                         Rectangle()
                             .fill(Theme.flaskEdge.opacity(hour ? 1 : 0.5))
                             .frame(height: 1)
                     }
-                    .frame(width: flask.size.width + 42, alignment: .leading)
-                    .offset(x: -42, y: flask.offset(minute))
+                    .frame(width: flask.size.width + 46, alignment: .leading)
+                    .offset(x: -46, y: flask.offset(minute))
                 } else {
                     VStack(spacing: 3) {
                         Rectangle()

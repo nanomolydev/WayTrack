@@ -2,6 +2,8 @@ import Foundation
 import UserNotifications
 
 enum Notifications {
+    /// Явный запрос — только по кнопке в настройках: системный алерт на первом
+    /// запуске закрывает весь экран и ничего не объясняет.
     static func requestAccess() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
@@ -10,6 +12,13 @@ enum Notifications {
     /// ponytail: перепланируем целиком при каждом сохранении — дешевле, чем диффить расписание.
     static func reschedule(_ day: DaySchedule) {
         let center = UNUserNotificationCenter.current()
+        center.getNotificationSettings { settings in
+            guard settings.authorizationStatus == .authorized else { return }
+            Task { @MainActor in schedule(day, center: center) }
+        }
+    }
+
+    private static func schedule(_ day: DaySchedule, center: UNUserNotificationCenter) {
         center.removeAllPendingNotificationRequests()
         var points: [(Int, String, String)] = []
         for task in day.fixed {
