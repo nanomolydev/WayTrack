@@ -7,3 +7,4 @@ build/
 .tg-files/
 .tg-photos/
 models/
+/.local/
