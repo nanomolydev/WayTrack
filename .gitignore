@@ -1,0 +1,9 @@
+.build/
+DerivedData/
+build/
+*.xcodeproj
+*.ipa
+.DS_Store
+.tg-files/
+.tg-photos/
+models/

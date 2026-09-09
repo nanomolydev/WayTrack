@@ -1,0 +1,106 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build
+  cancel-in-progress: true
+
+env:
+  XCODEGEN_VERSION: "2.43.0"
+  APP_VERSION: "1.0"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        run: echo "version=${APP_VERSION}.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      # Кеш №1: бинарник XcodeGen — быстрее, чем brew install (секунды против минуты).
+      - name: Cache XcodeGen
+        id: xcodegen-cache
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: xcodegen-${{ env.XCODEGEN_VERSION }}
+
+      - name: Install XcodeGen
+        if: steps.xcodegen-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p .tools && cd .tools
+          curl -fsSL -o xcodegen.zip \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          unzip -q xcodegen.zip && rm xcodegen.zip
+          chmod +x xcodegen/bin/xcodegen
+
+      # Кеш №2: сборочный кеш SwiftPM для юнит-тестов ядра.
+      - name: Cache SwiftPM build
+        uses: actions/cache@v4
+        with:
+          path: .build
+          key: spm-${{ runner.os }}-${{ hashFiles('Sources/WayTrackCore/**', 'Tests/**', 'Package.swift') }}
+          restore-keys: spm-${{ runner.os }}-
+
+      - name: Test core
+        run: swift test
+
+      # Кеш №3: DerivedData. Точное попадание ключа → почти пустая инкрементальная
+      # сборка; restore-keys подтягивает ближайший предыдущий кеш.
+      - name: Cache DerivedData
+        uses: actions/cache@v4
+        with:
+          path: DerivedData
+          key: dd-${{ runner.os }}-${{ hashFiles('Sources/**', 'Resources/**', 'project.yml') }}
+          restore-keys: dd-${{ runner.os }}-
+
+      - name: Generate project
+        run: .tools/xcodegen/bin/xcodegen generate --quiet
+
+      - name: Build (unsigned)
+        run: |
+          xcodebuild build \
+            -project WayTrack.xcodeproj \
+            -scheme WayTrack \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath DerivedData \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            MARKETING_VERSION="${{ steps.v.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            -quiet
+
+      - name: Package .ipa
+        id: package
+        run: |
+          rm -rf Payload && mkdir Payload
+          cp -R DerivedData/Build/Products/Release-iphoneos/WayTrack.app Payload/
+          zip -qry WayTrack.ipa Payload
+          echo "size=$(stat -f%z WayTrack.ipa)" >> "$GITHUB_OUTPUT"
+
+      - name: Build source manifest
+        env:
+          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          VERSION: ${{ steps.v.outputs.version }}
+          SIZE: ${{ steps.package.outputs.size }}
+        run: python3 scripts/make_repo_json.py
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.v.outputs.version }}" WayTrack.ipa repo.json \
+            --title "WayTrack ${{ steps.v.outputs.version }}" \
+            --notes "Unsigned build for LiveContainer. Source: /releases/latest/download/repo.json"
